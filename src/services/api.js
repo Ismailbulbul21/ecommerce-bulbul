@@ -9,61 +9,13 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 
-const IMGBB_API_KEY = process.env.REACT_APP_IMGBB_API_KEY; // Replace with your ImgBB API key
-
-// Function to compress image before uploading
-const compressImage = async (file) => {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target.result;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 1024;
-        const MAX_HEIGHT = 1024;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        canvas.toBlob((blob) => {
-          resolve(new File([blob], file.name, {
-            type: 'image/jpeg',
-            lastModified: Date.now(),
-          }));
-        }, 'image/jpeg', 0.7); // Compress with 70% quality
-      };
-    };
-  });
-};
-
-// Optimized image upload function
+// Function to upload image to ImgBB
 const uploadImageToImgBB = async (imageFile) => {
   try {
-    // Compress image before upload
-    const compressedFile = await compressImage(imageFile);
-    
     const formData = new FormData();
-    formData.append('image', compressedFile);
+    formData.append('image', imageFile);
     
-    const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+    const response = await fetch(`https://api.imgbb.com/1/upload?key=${process.env.REACT_APP_IMGBB_API_KEY}`, {
       method: 'POST',
       body: formData
     });
@@ -73,14 +25,60 @@ const uploadImageToImgBB = async (imageFile) => {
     }
     
     const data = await response.json();
-    if (data.success) {
-      return data.data.url;
-    } else {
+    if (!data.success) {
       throw new Error(data.error?.message || 'Failed to upload image');
     }
+    
+    return data.data.url;
   } catch (error) {
-    console.error('Error uploading image to ImgBB:', error);
-    throw error;
+    console.error('Error uploading image:', error);
+    throw new Error('Image upload failed');
+  }
+};
+
+// Optimized product upload function with better error handling
+export const addProduct = async (productData, imageFiles) => {
+  try {
+    if (!imageFiles || imageFiles.length === 0) {
+      throw new Error('No images provided');
+    }
+
+    console.log('Starting image upload...');
+    const imageUrls = [];
+    
+    // Upload images sequentially to avoid rate limiting
+    for (const file of imageFiles) {
+      try {
+        const url = await uploadImageToImgBB(file);
+        imageUrls.push(url);
+        console.log('Image uploaded successfully:', url);
+      } catch (error) {
+        console.error('Error uploading image:', error);
+        throw new Error('Image upload failed');
+      }
+    }
+
+    if (imageUrls.length === 0) {
+      throw new Error('No images were uploaded successfully');
+    }
+
+    console.log('All images uploaded, adding product to Firestore...');
+
+    // Add product with image URLs to Firestore
+    const docRef = await addDoc(collection(db, 'products'), {
+      ...productData,
+      imageUrl: imageUrls[0], // First image as main image
+      imageUrls: imageUrls, // All image URLs
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    });
+
+    console.log('Product added successfully:', docRef.id);
+    return docRef.id;
+
+  } catch (error) {
+    console.error('Error in addProduct:', error);
+    throw new Error(error.message || 'Failed to upload product');
   }
 };
 
@@ -108,29 +106,6 @@ export const fetchProduct = async (id) => {
     return null;
   } catch (error) {
     console.error('Error fetching product:', error);
-    throw error;
-  }
-};
-
-// Optimized product upload function
-export const addProduct = async (productData, imageFiles) => {
-  try {
-    // Upload images in parallel with Promise.all
-    const uploadPromises = imageFiles.map(file => uploadImageToImgBB(file));
-    const imageUrls = await Promise.all(uploadPromises);
-
-    // Add product with image URLs to Firestore
-    const docRef = await addDoc(collection(db, 'products'), {
-      ...productData,
-      imageUrl: imageUrls[0], // First image as main image
-      imageUrls: imageUrls, // All image URLs
-      status: 'pending',
-      createdAt: new Date().toISOString()
-    });
-
-    return docRef.id;
-  } catch (error) {
-    console.error('Error adding product:', error);
     throw error;
   }
 };
