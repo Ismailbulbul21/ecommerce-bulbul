@@ -63,29 +63,6 @@ function HomePage() {
         </div>
       </div>
 
-      {/* Featured Categories */}
-      <div className="bg-gray-50 py-16">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">Popular Categories</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {['Electronics', 'Fashion', 'Home', 'Sports'].map((category) => (
-              <Link 
-                key={category}
-                to={`/products?category=${category}`}
-                className="group relative overflow-hidden rounded-2xl aspect-square hover:shadow-lg transition-all duration-300"
-              >
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/60" />
-                <div className="absolute bottom-4 left-4 text-white">
-                  <h3 className="text-xl font-semibold group-hover:translate-x-2 transition-transform duration-300">
-                    {category}
-                  </h3>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* Featured Products */}
       <div className="container mx-auto px-4 py-16">
         <div className="flex justify-between items-center mb-12">
@@ -161,4 +138,4 @@ function HomePage() {
   );
 }
 
-export default HomePage; 
+export default HomePage;
