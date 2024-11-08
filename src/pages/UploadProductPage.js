@@ -46,18 +46,81 @@ function UploadProductPage() {
     }
   };
 
-  const handleImageChange = (e) => {
+  const handleImageChange = async (e) => {
     const files = Array.from(e.target.files);
+    
+    // Validate files
+    for (const file of files) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        setError('Each image must be less than 5MB');
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        setError('Please upload only image files');
+        return;
+      }
+    }
+
     if (files.length + images.length > maxImages) {
       setError(`You can only upload up to ${maxImages} images`);
       return;
     }
 
-    setImages(prev => [...prev, ...files]);
+    // Process images
+    try {
+      const processedFiles = files.map(file => {
+        // Create a smaller version of the image
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              let width = img.width;
+              let height = img.height;
+              
+              // Max dimensions
+              const MAX_SIZE = 800;
+              if (width > height) {
+                if (width > MAX_SIZE) {
+                  height *= MAX_SIZE / width;
+                  width = MAX_SIZE;
+                }
+              } else {
+                if (height > MAX_SIZE) {
+                  width *= MAX_SIZE / height;
+                  height = MAX_SIZE;
+                }
+              }
 
-    // Create previews for new images
-    const newPreviews = files.map(file => URL.createObjectURL(file));
-    setPreviews(prev => [...prev, ...newPreviews]);
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, width, height);
+              
+              canvas.toBlob((blob) => {
+                resolve(new File([blob], file.name, {
+                  type: 'image/jpeg',
+                  lastModified: Date.now(),
+                }));
+              }, 'image/jpeg', 0.7);
+            };
+            img.src = e.target.result;
+          };
+          reader.readAsDataURL(file);
+        });
+      });
+
+      const optimizedFiles = await Promise.all(processedFiles);
+      setImages(prev => [...prev, ...optimizedFiles]);
+
+      // Create preview URLs
+      const newPreviews = files.map(file => URL.createObjectURL(file));
+      setPreviews(prev => [...prev, ...newPreviews]);
+    } catch (error) {
+      console.error('Error processing images:', error);
+      setError('Error processing images. Please try again.');
+    }
   };
 
   const removeImage = (index) => {
@@ -77,22 +140,28 @@ function UploadProductPage() {
     }
 
     setLoading(true);
+    setError('');
+
     try {
+      console.log('Starting upload...');
       await addProduct({
         ...formData,
         userId: user.uid,
         userEmail: user.email
       }, images);
+      
+      console.log('Upload successful');
       setShowSuccess(true);
       setTimeout(() => {
         setShowSuccess(false);
         navigate('/products');
-      }, 5000); // Show message for 5 seconds
+      }, 3000);
     } catch (error) {
-      setError('Failed to upload product');
-      console.error('Error uploading product:', error);
+      console.error('Upload error:', error);
+      setError('Failed to upload product. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
