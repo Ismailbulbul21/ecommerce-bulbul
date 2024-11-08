@@ -33,29 +33,29 @@ function App() {
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/signup" element={<SignupPage />} />
                 <Route path="/contact" element={<ContactPage />} />
-                <Route 
-                  path="/upload-product" 
+                <Route
+                  path="/upload-product"
                   element={
                     <PrivateRoute>
                       <UploadProductPage />
                     </PrivateRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/admin/*" 
+                <Route
+                  path="/admin/*"
                   element={
                     <AdminRoute>
                       <AdminPanel />
                     </AdminRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/profile" 
+                <Route
+                  path="/profile"
                   element={
                     <PrivateRoute>
                       <ProfilePage />
                     </PrivateRoute>
-                  } 
+                  }
                 />
               </Routes>
             </main>
