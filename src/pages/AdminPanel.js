@@ -10,6 +10,7 @@ function AdminPanel() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('pending');
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [viewProduct, setViewProduct] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -116,6 +117,105 @@ function AdminPanel() {
         alert('Failed to delete product. Please try again.');
       }
     }
+  };
+
+  const handleViewDetails = (product) => {
+    setViewProduct(product);
+  };
+
+  const ProductViewModal = ({ product, onClose }) => {
+    if (!product) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="bg-white rounded-lg p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="flex justify-between items-start mb-4">
+            <h2 className="text-2xl font-bold">Product Details</h2>
+            <button 
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Updated Images Section */}
+            <div>
+              <h3 className="font-semibold mb-2">Product Images</h3>
+              <div className="grid grid-cols-1 gap-2">
+                {product.imageUrl ? (
+                  <img
+                    src={product.imageUrl}
+                    alt={product.name}
+                    className="w-full h-64 object-cover rounded"
+                  />
+                ) : (
+                  <div className="w-full h-64 bg-gray-200 rounded flex items-center justify-center">
+                    <span className="text-gray-500">No image available</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Details Section */}
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold">Basic Information</h3>
+                <p><span className="font-medium">Name:</span> {product.name}</p>
+                <p><span className="font-medium">Price:</span> ${product.price}</p>
+                <p><span className="font-medium">Category:</span> {product.category}</p>
+                <p><span className="font-medium">Status:</span> {product.status}</p>
+              </div>
+
+              <div>
+                <h3 className="font-semibold">Description</h3>
+                <p className="text-gray-700">{product.description}</p>
+              </div>
+
+              <div>
+                <h3 className="font-semibold">Seller Information</h3>
+                <p><span className="font-medium">Name:</span> {product.sellerInfo?.name}</p>
+                <p><span className="font-medium">Email:</span> {product.sellerInfo?.email}</p>
+                <p><span className="font-medium">Submitted:</span> {new Date(product.createdAt).toLocaleDateString()}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="mt-6 flex justify-end space-x-4">
+            {product.status === 'pending' && (
+              <>
+                <button
+                  onClick={() => {
+                    handleApprove(product);
+                    onClose();
+                  }}
+                  className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                >
+                  Approve
+                </button>
+                <button
+                  onClick={() => {
+                    handleReject(product);
+                    onClose();
+                  }}
+                  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                >
+                  Reject
+                </button>
+              </>
+            )}
+            <button
+              onClick={onClose}
+              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const filteredProducts = filter === 'all' 
@@ -231,6 +331,12 @@ function AdminPanel() {
                     {product.status === 'pending' && (
                       <>
                         <button
+                          onClick={() => handleViewDetails(product)}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
+                          View
+                        </button>
+                        <button
                           onClick={() => handleApprove(product)}
                           className="text-green-600 hover:text-green-900"
                         >
@@ -257,6 +363,13 @@ function AdminPanel() {
           </table>
         </div>
       </div>
+
+      {viewProduct && (
+        <ProductViewModal 
+          product={viewProduct} 
+          onClose={() => setViewProduct(null)} 
+        />
+      )}
     </div>
   );
 }
